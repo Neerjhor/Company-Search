@@ -13,7 +13,7 @@ def get_descendants_route(company_id: int, session = Depends(get_session)):
 
     return descendants
 
-@router.get("/users/{user_id}/search/{query}")
-def search_companies_route(user_id: int, query: str, session = Depends(get_session)):
-    results = search_companies(user_id, query, session)
+@router.get("/users/{user_id}/companies")
+def search_companies_route(user_id: int, q: str = "", session = Depends(get_session)):
+    results = search_companies(user_id, q, session)
     return results

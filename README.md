@@ -5,8 +5,8 @@
 **With python**
 
 ```shell
-$ git clone https://github.com/Neerjhor/messages.git
-$ cd messages
+$ git clone https://github.com/Neerjhor/Company-Search.git
+$ cd Company_Search
 $ python3 -m venv myenv
 $ source myenv/bin/activate
 $ pip3 install -r requirements.txt
@@ -15,115 +15,23 @@ $ python run.py
 
 ## Description
 
-Users need to be created before sending or getting messages. If messages are sent to a non-existent user, then error will be thrown. Similarly, to get messages for a user, that user needs to be created.
+This models a hierarchy of companies in a database. Each company has a name and has only one parent company. It is possible to assign users to a company at any level of the hierarchy. It is also possible for a user to search for companies by name. Elasticsearch is used to store the search index.
 
-The unique identifier for each user is their username. No two user can be created with the same username.
+The search functionality implements a method of access control which only allows the company that the user is assigned to and its descendants in the hierarchy to appear in the search results.
+
+Some companies and some users are seeded when the application is run. The routes operate based on them.
 
 You can see a nice interactive documentation if you go to `http://127.0.0.1:8000/docs` after running the application.
 
 ## API Usage
 
-### Create a new user
+### List the descendants for a provided <company_id>
 
 **Definition**
 
-`POST /users/`
+`GET /companies/{company_id}/descendants`
 
-**Request**
-
-content-type: application/json
-
-Body data should be a json object with the following fields
-
-- `"name" : string` the name of the user
-- `"username" : string` the username of the user (this cannot be empty)
-
-Ex:
-```json
-{
-    "name": "Alice",
-    "username": "alice"
-}
-```
-
-**Response**
-
-- `200 OK` on success
-
-```json
-{
-    "Message" : "User successfully created.",
-}
-```
-
-- `400 BAD_REQUEST` on failure on duplicate user
-
-```json
-{
-    "detail" : "Username already exists.",
-}
-```
-
-- `400 BAD_REQUEST` on failure on empty username
-
-```json
-{
-    "detail" : "Username cannot be an empty string.",
-}
-```
-
-### Submit a new message to user
-
-**Definition**
-
-`POST /users/<username>/messages`
-
-**Request**
-
-content-type: application/json
-
-Body data should be a json object with the following fields
-
-- `"sender_username" : string` the username of the sender
-- `"content" : string` message content
-
-Ex:
-```json
-{
-    "sender_username": "alice",
-    "content": "hej hej"
-}
-```
-
-**Response**
-
-- `200 OK` on success
-
-```json
-{
-    "sender_username": "alice",
-    "recipient_username" : "bob",
-    "timestamp": "2024-05-24T15:27:14.459730",
-    "content": "hej hej",
-    "id" : "some_uuid"
-}
-```
-
-- `404 NOT_FOUND` on failure on non-existent user
-
-```json
-{
-    "detail" : "User does not exist.",
-}
-```
-
-### Get all messages for user
-
-**Definition**
-
-`GET /users/<username>/messages`
-
-Will fetch all received messages.
+Will fetch all descendants of the company (including the company).
 
 **Response**
 
@@ -131,38 +39,39 @@ Will fetch all received messages.
 
 ```json
 [
-    {
-        "sender_username": "alice",
-        "recipient_username" : "bob",
-        "timestamp": "2024-05-24T15:27:14.459730",
-        "content": "hej hej",
-        "id" : "some_uuid"
-    },
-    {
-        "sender_username": "alice",
-        "recipient_username" : "bob",
-        "timestamp": "2024-05-24T15:35:14.459730",
-        "content": "vi ses",
-        "id" : "another_uuid"
-    }
+  {
+    "name": "Company_A",
+    "parent_id": null,
+    "id": 1
+  },
+  {
+    "name": "Company_B",
+    "parent_id": 1,
+    "id": 2
+  },
+  {
+    "name": "Company_C",
+    "parent_id": 1,
+    "id": 3
+  }
 ]
 ```
 
-- `404 NOT_FOUND` on failure on non-existent user
+- `404 NOT_FOUND` on failure on non-existent company
 
 ```json
 {
-    "detail" : "User does not exist.",
+    "detail" : "Company does not exist.",
 }
 ```
 
-### Get new messages for user
+### List the companies with a partial or full name match with the query \<q\>
 
 **Definition**
 
-`GET /users/<username>/messages/new`
+`GET /users/{user_id}/companies?q=<query>`
 
-Will fetch only new messages (since the last time any message was fetched).
+Accepts a search term and returns all companies with a partial or full name match, which the authenticated user should be able to see according to the access control rules described above.
 
 **Response**
 
@@ -170,143 +79,41 @@ Will fetch only new messages (since the last time any message was fetched).
 
 ```json
 [
-    {
-        "sender_username": "alice",
-        "recipient_username" : "bob",
-        "timestamp": "2024-05-24T15:27:14.459730",
-        "content": "hej hej",
-        "id" : "some_uuid"
-    },
-    {
-        "sender_username": "alice",
-        "recipient_username" : "bob",
-        "timestamp": "2024-05-24T15:35:14.459730",
-        "content": "vi ses",
-        "id" : "another_uuid"
-    }
+  {
+    "name": "Company_B",
+    "parent_id": 1,
+    "id": 2
+  },
+  {
+    "name": "Company_C",
+    "parent_id": 1,
+    "id": 3
+  }
 ]
-```
-
-- `404 NOT_FOUND` on failure on non-existent user
-
-```json
-{
-    "detail" : "User does not exist.",
-}
-```
-
-### Delete a specific message for user.
-
-**Definition**
-
-`DELETE "/users/<username>/messages/<message_id>"`
-
-Deletes a specific message for a specific user.
-
-**Response**
-
-- `200 OK` on success
-
-```json
-{
-    "Message": "Message deleted."
-}
-```
-
-- `404 NOT_FOUND` on failure on non-existent user
-
-```json
-{
-    "detail" : "User does not exist.",
-}
-```
-
-- `404 NOT_FOUND` on failure on non-existent message with that message_id
-
-```json
-{
-    "detail" : "No message with this message id exists.",
-}
-```
-
-### Delete multiple messages for user.
-
-**Definition**
-
-`DELETE /users/<username>/messages/`
-
-If some message_id from the list does not exist, it doesn't throw an error in this case. It deletes the messages that exist.
-
-**Request**
-
-content-type: application/json
-
-Body data should be a list containing the message ids to be deleted.
-
-Ex:
-```json
-{
-    "message_ids" : ["some_id", "another_id"]
-}
-```
-
-**Response**
-
-```json
-{
-    "Message": "Message deleted."
-}
 ```
 
 ## Using the endpoints with `curl`
 
-### Create an user
+### List the descendants for a provided <company_id>
 
 ```
-curl -X POST "http://127.0.0.1:8000/users/" \
--H "Content-Type: application/json" \
--d '{"name": "Alice", "username": "alice"}'
+curl -X 'GET' \
+  'http://127.0.0.1:8000/companies/1/descendants' \
+  -H 'accept: application/json'
 ```
 
-### Send a message
+### List the companies with a partial or full name match with the query \<q\>
 
 ```
-curl -X POST "http://127.0.0.1:8000/users/bob/messages/" \
--H "Content-Type: application/json" \
--d '{"content": "hej hej", "sender_username": "alice"}'
-```
-
-### Get all messages for a user
-
-```
-curl "http://127.0.0.1:8000/users/bob/messages/"
-```
-
-### Get new messages for a user
-
-```
-curl "http://127.0.0.1:8000/users/bob/messages/new"
-```
-
-### Delete a specific message for a user
-
-```
-curl -X DELETE "http://127.0.0.1:8000/users/bob/messages/message_id"
-```
-
-### Delete multiple messages for a user
-
-```
-curl -X DELETE "http://127.0.0.1:8000/users/bob/messages/" \
--H "Content-Type: application/json" \
--d '{"message_ids": ["message_id_1", "message_id_2"]}'
+curl -X 'GET' \
+  'http://127.0.0.1:8000/users/2/companies?q=Company' \
+  -H 'accept: application/json'
 ```
 
 ## Future Work
 
-- Authentication and authorization should be implemented for users, before fetching or sending messages.
-- Deleting multiple messages can be improved. We can return a list of messages that were deleted.
+- API endpoints for creating companies and users should be introduced.
+- Authentication and authorization should be implemented for users, before fetching search results.
 - We can add some healthcheck and monitoring.
-- A `user_id` for each user should be introduced. It makes more sense to be used as a primary key in the User database. Also, it provides more security.
 - We can add a cache if the user base grows.
 - We can use https for more security.

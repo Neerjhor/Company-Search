@@ -34,7 +34,8 @@ def index_companies(session):
             "_id": company.id,
             "_source": {
                 "name": company.name,
-                "id": company.id
+                "id": company.id,
+                "parent_id": company.parent_id
             }
         }
         for company in companies
@@ -63,5 +64,13 @@ def search_companies(user_id: int, query: str, session):
             }
         }
     })
-    return [hit["_source"] for hit in response['hits']['hits']]
+    companies = [
+        Company(
+            id=hit["_source"]["id"],
+            name=hit["_source"]["name"],
+            parent_id=hit["_source"]["parent_id"]
+        )
+        for hit in response['hits']['hits']
+    ]
+    return companies
 
